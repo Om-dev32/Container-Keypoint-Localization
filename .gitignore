@@ -223,3 +223,6 @@ processed_data/
 checkpoints/
 *.npz
 *.pth
+
+!sample_data/
+!sample_data/**/*.npz
