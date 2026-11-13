@@ -35,6 +35,7 @@ The baseline vector-field architecture (`step3_train_paper.py`) is based on the 
     ├── step3_train_paper.py                   # Trains the ResNet-50 FPN + Vector Field baseline (PVNet)
     ├── paper/
     │   └── Reference_Paper.pdf                # Base research paper referenced for PVNet architecture
+    ├── sample_raw/                            # Sample raw images & YOLO-pose keypoint .txt labels
     ├── sample_data/
     │   └── test/                              # Pre-merged sample .npz test files for instant reproduction
     ├── notebooks/
@@ -44,14 +45,14 @@ The baseline vector-field architecture (`step3_train_paper.py`) is based on the 
         ├── 02_cornernet_subpixel_lock.png     # Stage 2: Sub-pixel corner lock via Mask-Guided StableCornerNet
         └── 03_multi_image_grid.png            # Stage 3: Multi-image test set evaluation grid
 
-*(Note: Full `.npz` dataset splits, `.pth` weight checkpoints, and local virtual environments are excluded via `.gitignore` to keep the repository lightweight, while `sample_data/test/` provides pre-merged `.npz` samples for immediate testing.)*
+*(Note: Full `.npz` dataset splits, `.pth` weight checkpoints, and local virtual environments are excluded via `.gitignore` to keep the repository lightweight, while `sample_raw/` and `sample_data/test/` provide ready-to-inspect raw and pre-merged samples.)*
 
 ---
 
 ## 4. End-to-End Pipeline Workflow
 
 1. **Data Alignment & Verification (`step1_verify.py`):**
-   * Matches the 208 original container yard images and ground-truth `(x, y)` corner keypoint labels against the exported Roboflow segmentation polygon masks using image thumbnail similarity and stem matching.
+   * Matches the 208 original container yard images and ground-truth `(x, y)` corner keypoint labels (`sample_raw/`) against the exported Roboflow segmentation polygon masks using image thumbnail similarity and stem matching.
 2. **Dataset Merging & Vector Field Generation (`step2_build_dataset.py`):**
    * Resizes images and binary masks to `256 x 256` across `train`, `valid`, and `test` splits.
    * Computes pixel-wise unit direction vectors from every interior container pixel toward each visible corner and packages everything into fast `.npz` tensors.
@@ -89,8 +90,8 @@ The baseline vector-field architecture (`step3_train_paper.py`) is based on the 
 
 ## 7. Data Format & How to Reproduce (Step-by-Step)
 
-### Expected Raw Directory Layout (For Full Dataset Merging)
-To merge the original corner keypoint annotations (`labels/*.txt`) with the Roboflow segmentation polygon exports, `step1_verify.py` and `step2_build_dataset.py` expect the following structure:
+### Expected Raw Directory Layout (Reference in `sample_raw/`)
+To merge the original corner keypoint annotations (`labels/*.txt`) with the Roboflow segmentation polygon exports, `step1_verify.py` and `step2_build_dataset.py` expect the following structure (see `sample_raw/` for exact image and label examples):
 
     dataset_root/
     ├── pose_dataset/                  # Original dataset with corner keypoints
