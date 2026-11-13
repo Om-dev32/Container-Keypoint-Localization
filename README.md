@@ -20,28 +20,34 @@ This repository implements and benchmarks three progressive approaches on a **20
     Container-Keypoint-Localization/
     ├── README.md                              # Complete project documentation & setup guide
     ├── requirements.txt                       # Python dependencies
-    ├── .gitignore                             # Excludes heavy .npz datasets & .pth model weights
+    ├── .gitignore                             # Excludes heavy .npz datasets, .pth weights & venv
+    ├── step1_verify.py                        # Verifies alignment of Roboflow masks & corner labels
+    ├── step2_build_dataset.py                 # Merges masks + keypoints & computes direction vectors (.npz)
+    ├── step3_train_paper.py                   # Trains the ResNet-50 FPN + Vector Field baseline (PVNet)
     ├── notebooks/
-    │   └── Container_6D_Pose_Pipeline.ipynb   # End-to-end notebook (Data Merge, PVNet, StableCornerNet, Eval)
+    │   └── Container_6D_Pose_Pipeline.ipynb   # Full interactive pipeline (PVNet, StableCornerNet & Eval)
     └── assets/
         ├── 01_pvnet_ransac_drift.png          # Stage 1: Vector-field RANSAC drift on variable corners
         ├── 02_cornernet_subpixel_lock.png     # Stage 2: Sub-pixel corner lock via Mask-Guided StableCornerNet
         └── 03_multi_image_grid.png            # Stage 3: Multi-image test set evaluation grid
 
-*(Note: Large `.npz` dataset splits and `.pth` weight checkpoints are excluded via `.gitignore` to keep the repository lightweight. Instructions to regenerate them are provided in Section 6.)*
+*(Note: Large `.npz` dataset splits, `.pth` weight checkpoints, and local virtual environments are excluded via `.gitignore` to keep the repository lightweight. Instructions to regenerate them are provided in Section 6.)*
 
 ---
 
-## 3. Dataset Preparation & Data Merging Pipeline
+## 3. End-to-End Pipeline Workflow
 
-* **Source Data:** 208 container yard images split into `train`, `valid`, and `test` subsets.
-* **Annotations Merged:**
-  * **Ground-Truth Corner Keypoints:** `(x, y)` coordinates of visible container corners from the original dataset labels.
-  * **Segmentation Polygons:** Binary container masks manually annotated and exported from Roboflow.
-* **Preprocessing (`.npz` Packaging):**
-  * Each image and segmentation mask is resized to `256 x 256`.
-  * For **PVNet**, unit direction vectors pointing from every interior foreground pixel toward each corner are precomputed.
-  * For **`StableCornerNet`**, visible keypoints are **canonically sorted clockwise** around the container centroid to prevent slot-index permutation across frames, and converted into continuous **2D Gaussian Heatmaps** (`sigma = 4.0`).
+1. **Data Alignment & Verification (`step1_verify.py`):**
+   * Matches the 208 original container yard images and ground-truth `(x, y)` corner keypoint labels against the exported Roboflow segmentation polygon masks using image thumbnail similarity and stem matching.
+2. **Dataset Merging & Vector Field Generation (`step2_build_dataset.py`):**
+   * Resizes images and binary masks to `256 x 256` across `train`, `valid`, and `test` splits.
+   * Computes pixel-wise unit direction vectors from every interior container pixel toward each visible corner and packages everything into fast `.npz` tensors.
+3. **Research Paper Baseline (`step3_train_paper.py` — `ResNet-50 FPN + RANSAC`):**
+   * Trains a dual-head **ResNet-50 FPN** predicting foreground segmentation masks and 2D unit direction vectors (`Val Loss: 0.4634 -> 0.1606`).
+   * Uses GPU-accelerated RANSAC ray voting (`61.54 px` error) and `EPnP` (`cv2.solvePnP`) for 3D depth estimation (`Z ≈ 7.02 m`).
+4. **Upgraded Sub-Pixel Corner Decoder (`notebooks/Container_6D_Pose_Pipeline.ipynb` — `StableCornerNet`):**
+   * Resolves slot-permutation drift on variable corner counts (4, 6, or 8 visible corners) via **Canonical Clockwise Keypoint Sorting** and **2D Gaussian Heatmap Regression (`sigma = 4.0`, FP32 `BCEWithLogitsLoss`, `Best Val Loss: 0.3628`)**.
+   * Applies **Connected-Component Mask Filtering** to isolate the primary container and **5x5 Non-Maximum Suppression (`thresh = 0.72`)** to lock detections onto exact corners.
 
 ---
 
@@ -75,18 +81,15 @@ This repository implements and benchmarks three progressive approaches on a **20
     cd Container-Keypoint-Localization
     pip install -r requirements.txt
 
-### Step 2: Prepare Dataset Directory
-Place the merged `.npz` dataset splits (`train/`, `valid/`, `test/`) inside a local `processed_data/` folder (each `.npz` file contains `image`, `sem_mask`, and `kpts` arrays):
+### Step 2: Verify & Build `.npz` Dataset Splits
+1. Place the raw pose dataset (`images/` and `labels/`) and Roboflow segmentation export in your workspace directory.
+2. Verify mask-to-keypoint alignment and build the `.npz` splits:
+       python step1_verify.py
+       python step2_build_dataset.py
 
-    processed_data/
-    ├── train/   # *.npz files
-    ├── valid/   # *.npz files
-    └── test/    # *.npz files
-
-### Step 3: Run Training & Evaluation
-1. Open `notebooks/Container_6D_Pose_Pipeline.ipynb` in Jupyter Notebook or VS Code.
-2. Update `DATA_DIR` and `SAVE_DIR` paths in the configuration cell if running outside the default directory.
-3. Run all cells sequentially to:
-   * Train `StableCornerNet` for 50 epochs in pure FP32 (`Best Val Loss: 0.3628`, saved to `checkpoints/stable_corner_net.pth`).
-   * Run primary-container connected-component filtering + `5x5` NMS (`thresh = 0.72`) across the test set.
-   * Generate side-by-side Predicted (Red) vs. Ground Truth (Cyan) visualizations and compute mean localization error and FPS.
+### Step 3: Train Baseline & Upgraded Models
+* **Run PVNet Baseline Training:**
+      python step3_train_paper.py
+* **Run `StableCornerNet` Training & Multi-Image Evaluation:**
+  1. Open `notebooks/Container_6D_Pose_Pipeline.ipynb` in Jupyter Notebook or VS Code.
+  2. Run the cells sequentially to train `StableCornerNet` for 50 epochs (`checkpoints/stable_corner_net.pth`) and generate the primary-container filtered `5x5` NMS corner predictions across the test split.
