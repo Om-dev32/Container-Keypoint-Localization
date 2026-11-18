@@ -220,9 +220,14 @@ __marimo__/
 .streamlit/secrets.toml
 
 processed_data/
+processed_data_512/
 checkpoints/
 *.npz
 *.pth
+*.zip
+
+test_random_512_clean/
+test_random_512_tta/
 
 !sample_data/
 !sample_data/**/*.npz
