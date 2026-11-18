@@ -125,6 +125,8 @@ To verify the pipeline immediately without downloading the full dataset, **`samp
   - Open `notebooks/Container_6D_Pose_Pipeline.ipynb` in Jupyter Notebook or VS Code.
   - Set `TEST_DIR = "sample_data/test"` in the evaluation cell and run it to reproduce the mask-guided `Flip TTA` sub-pixel corner predictions and clean visualizations.
 
+To reproduce this approach, first download and extract the annotated dataset (train/, valid/, and test/ splits) and install the required dependencies. Next, open the Jupyter Notebook (notebooks/Fine_tune_Container_6D_Pose_Pipeline.ipynb) and run the cells sequentially—starting from the 512×512 .npz dataset preprocessing with angle-filtered corner heatmaps, followed by model fine-tuning and Flip TTA inference—and finally verify the visual corner predictions.
+
 ### Option B: Full `512×512` Dataset & Training Pipeline (From Scratch)
 1. Place the full `train/`, `valid/`, and `test/` YOLOv8 polygon dataset folders in the project root.
 2. Verify alignment and build the `512 x 512` angle-filtered `.npz` splits (`processed_data_512/`):
